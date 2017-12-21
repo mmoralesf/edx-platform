@@ -1,7 +1,9 @@
 """
 Unit tests for course_goals.api methods.
 """
+import mock
 
+from ddt import ddt, data
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lms.djangoapps.course_goals.models import CourseGoal
@@ -16,6 +18,7 @@ EVENT_NAME_ADDED = 'edx.course.goal.added'
 EVENT_NAME_UPDATED = 'edx.course.goal.updated'
 
 
+@ddt
 class TestCourseGoalsAPI(EventTrackingTestCase, SharedModuleStoreTestCase):
     """
     Testing the Course Goals API.
@@ -75,3 +78,13 @@ class TestCourseGoalsAPI(EventTrackingTestCase, SharedModuleStoreTestCase):
             },
         )
         return response
+
+    @data(EVENT_NAME_ADDED, EVENT_NAME_UPDATED)
+    def test_update_google_analytics(self, event_type):
+        """
+        Tests signal is sent to Google Analytics using segment
+        """
+        with mock.patch('lms.djangoapps.course_goals.views.update_google_analytics') as mock_ga_call:
+            user_id = self.user.id
+            mock_ga_call(event_type, user_id)
+            self.assertTrue(mock_ga_call.called)
