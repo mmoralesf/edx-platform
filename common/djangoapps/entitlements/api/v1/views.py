@@ -138,15 +138,28 @@ class EntitlementViewSet(viewsets.ModelViewSet):
         # (i.e. multiple upgradeable enrollments or no available upgradeable enrollment), dont enroll
         if len(upgradeable_enrollments) == 1:
             enrollment = upgradeable_enrollments[0]
-            log.info('Upgrading enrollment [%s] from audit to [%s] while adding entitlement for user [%s] for course [%s] ', enrollment, serializer.data.get('mode'), user.username, serializer.data.get('course_uuid'))
+            log.info(
+                'Upgrading enrollment [%s] from audit to [%s] while adding entitlement for user [%s] for course [%s] ',
+                enrollment, serializer.data.get('mode'),
+                user.username,
+                serializer.data.get('course_uuid')
+            )
             enrollment.update_enrollment(mode=entitlement.mode)
             entitlement.set_enrollment(enrollment)
         else:
-            log.info('No enrollment upgraded while adding entitlement for user [%s] for course [%s] ', user.username, serializer.data.get('course_uuid'))
+            log.info(
+                'No enrollment upgraded while adding entitlement for user [%s] for course [%s] ',
+                user.username,
+                serializer.data.get('course_uuid')
+            )
 
         headers = self.get_success_headers(serializer.data)
-        # Note, the entitlement is re-serialized before getting added to the Response, so that the 'modified' date reflects changes that occur when upgrading enrollment.
-        return Response(CourseEntitlementSerializer(entitlement).data, status=status.HTTP_201_CREATED, headers=headers)
+        # Note, the entitlement is re-serialized before getting added to the Response,
+        # so that the 'modified' date reflects changes that occur when upgrading enrollment.
+        return Response(
+            CourseEntitlementSerializer(entitlement).data,
+            status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def retrieve(self, request, *args, **kwargs):
         """
