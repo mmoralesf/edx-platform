@@ -867,8 +867,6 @@ class VisibleToStaffOnlyTest(UniqueCourseTest):
         self.course_home_page.visit()
         self.assertEqual(3, len(self.course_home_page.outline.sections['Test Section']))
 
-        log.info(">>> Test Sections: %s", self.course_home_page.outline.sections['Test Section'])
-
         self.course_home_page.outline.go_to_section("Test Section", "Subsection With Locked Unit")
         self.courseware_page.wait_for_page()
         self.assertEqual([u'Locked Unit', u'Unlocked Unit'], self.courseware_page.nav.sequence_items)
@@ -1009,6 +1007,10 @@ class ProblemExecutionTest(UniqueCourseTest):
         # Navigate to the problem page
         self.course_home_page.visit()
         self.course_home_page.outline.go_to_section('Test Section', 'Test Subsection')
+
+        log.info(">>> self.browser: '{0}'".format(
+            self.browser
+        ))
 
         problem_page = ProblemPage(self.browser)
         self.assertEqual(problem_page.problem_name.upper(), 'PYTHON PROBLEM')

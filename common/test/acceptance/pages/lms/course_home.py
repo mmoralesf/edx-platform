@@ -167,16 +167,18 @@ class CourseOutlinePage(PageObject):
         Example:
             go_to_section("Week 1", "Lesson 1")
         """
+
         section_index = self._section_title_to_index(section_title)
-        log.info(">>> section_index: '{0}'".format(section_index))
         if section_index is None:
             raise ValueError("Could not find section '{0}'".format(section_title))
 
         try:
-            log.info(">>> self._subsection_titles(section_index + 1): '{0}'".format(self._subsection_titles(section_index + 1)))
-            log.info(">>> subsection_title: '{0}'".format(subsection_title))
-            subsection_index = self._subsection_titles(section_index + 1).index(subsection_title)
-            log.info(">>> subsection_index: '{0}'".format(subsection_index))
+            subsection_titles = self._subsection_titles(section_index + 1)
+            subsection_index = [i for i in range(len(subsection_titles)) if subsection_title in subsection_titles[i]]
+            if not subsection_index:
+                raise ValueError()
+
+            subsection_index = subsection_index[0]
         except ValueError:
             raise ValueError("Could not find subsection '{0}' in section '{1}'".format(
                 subsection_title, section_title
@@ -244,16 +246,10 @@ class CourseOutlinePage(PageObject):
         Return a list of all subsection titles on the page
         for the section at index `section_index` (starts at 1).
         """
-        log.info(">>> calling _subsection_titles...")
-        log.info(">>> section_index: '{0}'".format(section_index))
         subsection_css = self.SUBSECTION_TITLES_SELECTOR.format(section_index)
-        log.info(">>> subsection_css: '{0}'".format(subsection_css))
-        return_val = self.q(css=subsection_css).map(
+        return self.q(css=subsection_css).map(
             lambda el: el.get_attribute('innerHTML').strip()
         ).results
-        log.info(">>> return_val: '{0}'".format(return_val))
-
-        return return_val
 
     def _wait_for_course_section(self, section_title, subsection_title):
         """
