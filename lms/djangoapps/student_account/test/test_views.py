@@ -355,15 +355,16 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
         self._assert_third_party_auth_data(response, None, None, [], None)
 
     @mock.patch('student_account.views.enterprise_customer_for_request')
+    @mock.patch('openedx.core.djangoapps.user_api.api.enterprise_customer_for_request')
     @ddt.data(
-        ("signin_user", None, None, None),
-        ("register_user", None, None, None),
-        ("signin_user", "google-oauth2", "Google", None),
-        ("register_user", "google-oauth2", "Google", None),
-        ("signin_user", "facebook", "Facebook", None),
-        ("register_user", "facebook", "Facebook", None),
-        ("signin_user", "dummy", "Dummy", None),
-        ("register_user", "dummy", "Dummy", None),
+        ("signin_user", None, None, None, False),
+        ("register_user", None, None, None, False),
+        ("signin_user", "google-oauth2", "Google", None, False),
+        ("register_user", "google-oauth2", "Google", None, False),
+        ("signin_user", "facebook", "Facebook", None, False),
+        ("register_user", "facebook", "Facebook", None, False),
+        ("signin_user", "dummy", "Dummy", None, False),
+        ("register_user", "dummy", "Dummy", None, False),
         (
             "signin_user",
             "google-oauth2",
@@ -372,7 +373,8 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
                 'name': 'FakeName',
                 'logo': 'https://host.com/logo.jpg',
                 'welcome_msg': 'No message'
-            }
+            },
+            True
         )
     )
     @ddt.unpack
@@ -382,7 +384,9 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
             current_backend,
             current_provider,
             expected_enterprise_customer_mock_attrs,
-            enterprise_customer_mock
+            add_user_details,
+            enterprise_customer_mock_1,
+            enterprise_customer_mock_2
     ):
         params = [
             ('course_id', 'course-v1:Org+Course+Run'),
@@ -403,12 +407,16 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
         else:
             expected_ec = None
 
-        enterprise_customer_mock.return_value = expected_ec
+        email=None
+        if add_user_details:
+            email='test@test.com'
+        enterprise_customer_mock_1.return_value = expected_ec
+        enterprise_customer_mock_2.return_value = expected_ec
 
         # Simulate a running pipeline
         if current_backend is not None:
             pipeline_target = "student_account.views.third_party_auth.pipeline"
-            with simulate_running_pipeline(pipeline_target, current_backend):
+            with simulate_running_pipeline(pipeline_target, current_backend, email=email):
                 response = self.client.get(reverse(url_name), params, HTTP_ACCEPT="text/html")
 
         # Do NOT simulate a running pipeline
@@ -447,7 +455,8 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
             current_backend,
             current_provider,
             expected_providers,
-            expected_ec
+            expected_ec,
+            add_user_details
         )
 
     def test_hinted_login(self):
@@ -625,7 +634,8 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
 
         self.assertEqual(resp['X-Frame-Options'], 'ALLOW')
 
-    def _assert_third_party_auth_data(self, response, current_backend, current_provider, providers, expected_ec):
+    def _assert_third_party_auth_data(self, response, current_backend, current_provider, providers, expected_ec,
+                                      add_user_details=False):
         """Verify that third party auth info is rendered correctly in a DOM data attribute. """
         finish_auth_url = None
         if current_backend:
@@ -639,7 +649,7 @@ class StudentAccountLoginAndRegistrationTest(ThirdPartyAuthTestMixin, UrlResetMi
             "errorMessage": None,
             "registerFormSubmitButtonText": "Create Account",
             "syncLearnerProfileData": False,
-            "pipeline_user_details": None
+            "pipeline_user_details": {"email": "test@test.com"} if add_user_details else None
         }
         if expected_ec is not None:
             # If we set an EnterpriseCustomer, third-party auth providers ought to be hidden.
