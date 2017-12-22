@@ -127,14 +127,9 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
         self.course = CourseFactory.create(org='edX', number='DemoX', display_name='Demo_Course')
         self.course2 = CourseFactory.create(org='edX', number='DemoX2', display_name='Demo_Course 2')
 
-        # self.return_values = [
-        #     {'key': str(self.course.id)},
-        #     {'key': str(self.course2.id)}
-        # ]
-
     @patch('lms.djangoapps.commerce.utils.is_commerce_service_configured', return_value=False)
     def test_ecommerce_service_not_configured(self, mock_commerce_configured):
-        course_entitlement = CourseEntitlementFactory()
+        course_entitlement = CourseEntitlementFactory.create(mode=CourseMode.VERIFIED)
         refund_success = refund_entitlement(course_entitlement)
         assert mock_commerce_configured.is_called
         assert not refund_success
@@ -148,7 +143,7 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
             body='{}',
             content_type='application/json'
         )
-        course_entitlement = CourseEntitlementFactory()
+        course_entitlement = CourseEntitlementFactory.create(mode=CourseMode.VERIFIED)
         refund_success = refund_entitlement(course_entitlement)
         assert not refund_success
 
@@ -177,7 +172,7 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
             }),
             content_type='application/json'
         )
-        course_entitlement = CourseEntitlementFactory()
+        course_entitlement = CourseEntitlementFactory.create(mode=CourseMode.VERIFIED)
         refund_success = refund_entitlement(course_entitlement)
         assert refund_success
 
@@ -202,8 +197,29 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
         refund_success = refund_entitlement(course_entitlement)
         assert mock_send_notification.is_called
         call_args = list(mock_send_notification.call_args)
-        assert call_args[0] == (course_entitlement, [1])
+        assert call_args[0] == (course_entitlement.user, [1])
         assert refund_success
+
+    @httpretty.activate
+    @patch('lms.djangoapps.commerce.utils._send_refund_notification', return_value=True)
+    def test_ecommerce_refund_failed_not_verified_no_notification(self, mock_send_notification):
+        httpretty.register_uri(
+            httpretty.POST,
+            settings.ECOMMERCE_API_URL + 'refunds/',
+            status=201,
+            body='[1]',
+            content_type='application/json'
+        )
+        httpretty.register_uri(
+            httpretty.PUT,
+            settings.ECOMMERCE_API_URL + 'refunds/1/process/',
+            status=400,
+            body='{}',
+            content_type='application/json'
+        )
+        course_entitlement = CourseEntitlementFactory.create(mode=CourseMode.PROFESSIONAL)
+        refund_success = refund_entitlement(course_entitlement)
+        assert not refund_success
 
     @httpretty.activate
     @patch('lms.djangoapps.commerce.utils._send_refund_notification', return_value=True)
@@ -228,5 +244,5 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
 
         assert mock_send_notification.is_called
         call_args = list(mock_send_notification.call_args)
-        assert call_args[0] == (course_entitlement, [1])
+        assert call_args[0] == (course_entitlement.user, [1])
         assert not refund_success

@@ -154,7 +154,7 @@ class TestRefundSignal(TestCase):
                 with mock_process_refund(failed_refund_id, status=500, reset_on_exit=False):
                     self.send_signal()
                     self.assertTrue(mock_send_notification.called)
-                    mock_send_notification.assert_called_with(self.course_enrollment, [failed_refund_id])
+                    mock_send_notification.assert_called_with(self.course_enrollment.user, [failed_refund_id])
 
     @mock.patch('lms.djangoapps.commerce.utils._send_refund_notification')
     def test_notification_if_automatic_approval_disabled(self, mock_send_notification):
@@ -168,7 +168,7 @@ class TestRefundSignal(TestCase):
         with mock_create_refund(status=201, response=[refund_id]):
             self.send_signal()
             self.assertTrue(mock_send_notification.called)
-            mock_send_notification.assert_called_with(self.course_enrollment, [refund_id])
+            mock_send_notification.assert_called_with(self.course_enrollment.user, [refund_id])
 
     @mock.patch('lms.djangoapps.commerce.utils._send_refund_notification')
     def test_no_notification_after_approval(self, mock_send_notification):
@@ -247,7 +247,7 @@ class TestRefundSignal(TestCase):
         # generate_refund_notification_body can handle formatting a unicode
         # message
         self.student.email = student_email
-        _send_refund_notification(self.course_enrollment, refund_ids)
+        _send_refund_notification(self.course_enrollment.user, refund_ids)
         body = _generate_refund_notification_body(self.student, refund_ids)
         mock_zendesk.assert_called_with(
             self.student.profile.name,

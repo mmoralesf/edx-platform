@@ -197,11 +197,14 @@ class EntitlementViewSet(viewsets.ModelViewSet):
 
         This method will revoke the User's entitlement and unenroll the user if they are enrolled
         in a Course Run
+
+        It is assumed the user has already been refunded.
         """
         log.info(
             'Entitlement Revoke requested for Course Entitlement[%s]',
             instance.uuid
         )
+        # This is not called with is_refund=True here because it is assumed the user has already been refunded.
         _process_revoke_and_unenroll_entitlement(instance)
 
 

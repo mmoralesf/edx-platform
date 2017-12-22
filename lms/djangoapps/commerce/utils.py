@@ -133,7 +133,7 @@ def refund_entitlement(course_entitlement):
     if not is_commerce_service_configured():
         log.error(
             'Ecommerce service is not configured, cannot refund for user [%s], course entitlement [%s].',
-            enrollee.username,
+            enrollee.id,
             entitlement_uuid
         )
         return False
@@ -143,7 +143,7 @@ def refund_entitlement(course_entitlement):
 
     log.info(
         'Attempting to create a refund for user [%s], course entitlement [%s]...',
-        enrollee.username,
+        enrollee.id,
         entitlement_uuid
     )
 
@@ -151,7 +151,7 @@ def refund_entitlement(course_entitlement):
         refund_ids = api_client.refunds.post(
             {
                 'order_number': course_entitlement.order_number,
-                'username': enrollee.username,
+                'username': enrollee.id,
                 'entitlement_uuid': entitlement_uuid,
             }
         )
@@ -169,7 +169,7 @@ def refund_entitlement(course_entitlement):
     if refund_ids:
         log.info(
             'Refund successfully opened for user [%s], course entitlement [%s]: %r',
-            enrollee.username,
+            enrollee.id,
             entitlement_uuid,
             refund_ids,
         )
@@ -177,7 +177,8 @@ def refund_entitlement(course_entitlement):
         return _process_refund(
             refund_ids=refund_ids,
             api_client=api_client,
-            course_product=course_entitlement
+            mode=course_entitlement.mode,
+            user=course_entitlement.user,
         )
     else:
         log.warn('No refund opened for user [%s], course entitlement [%s]', enrollee.id, entitlement_uuid)
@@ -209,7 +210,7 @@ def refund_seat(course_enrollment):
 
     log.info('Attempting to create a refund for user [%s], course [%s]...', enrollee.id, course_key_str)
 
-    refund_ids = api_client.refunds.post({'course_id': course_key_str, 'username': enrollee.username})
+    refund_ids = api_client.refunds.post({'course_id': course_key_str, 'username': enrollee.id})
 
     if refund_ids:
         log.info('Refund successfully opened for user [%s], course [%s]: %r', enrollee.id, course_key_str, refund_ids)
@@ -217,7 +218,8 @@ def refund_seat(course_enrollment):
         _process_refund(
             refund_ids=refund_ids,
             api_client=api_client,
-            course_product=course_enrollment,
+            mode=course_enrollment.mode,
+            user=course_enrollment.user,
         )
     else:
         log.info('No refund opened for user [%s], course [%s]', enrollee.id, course_key_str)
@@ -225,10 +227,15 @@ def refund_seat(course_enrollment):
     return refund_ids
 
 
-def _process_refund(refund_ids, api_client, course_product):
+def _process_refund(refund_ids, api_client, mode, user):
     """
     Helper method to process a refund for a given course_product. This method assumes that the User has already
     been unenrolled.
+
+    Arguments:
+        refund_ids: List of refund ids to be processed
+        api_client: The API Client used in the processing of refunds
+        course_product: The CourseEnrollment or CourseEntitlement object being refunded
 
     Returns:
         bool: True if the refund process was successful, False if there are any Errors that are not handled
@@ -258,25 +265,17 @@ def _process_refund(refund_ids, api_client, course_product):
         # condition should be removed when the CourseEnrollment.refundable() logic
         # is updated to be more correct, or when we implement better handling (and
         # notifications) in Otto for handling reversal of $0 transactions.
-        if course_product.mode != 'verified':
+        if mode != 'verified':
             # 'verified' is the only enrollment mode that should presently
             # result in opening a refund request.
-            msg = 'Skipping refund support notification for non-verified mode for user [%s], course [%s], mode: [%s]'
-            course_identifier = course_product.course_id
-            if course_product.uuid:
-                course_identifier = str(course_product.uuid)
-                msg = ('Skipping refund support notification for non-verified mode for user [%s], '
-                       'course entitlement [%s], mode: [%s]')
             log.info(
-                msg,
-                course_product.user.id,
-                course_identifier,
-                course_product.mode,
+                'Skipping refund support notification for non-verified mode for user [%s], mode: [%s]',
+                user.id,
+                mode,
             )
-            return False
         else:
             try:
-                return _send_refund_notification(course_product, refunds_requiring_approval)
+                return _send_refund_notification(user, refunds_requiring_approval)
             except:  # pylint: disable=bare-except
                 # Unable to send notification to Support, do not break as this method is used by Signals
                 log.warning('Could not send support notification for refund.', exc_info=True)
@@ -284,7 +283,7 @@ def _process_refund(refund_ids, api_client, course_product):
     return True
 
 
-def _send_refund_notification(course_product, refund_ids):
+def _send_refund_notification(user, refund_ids):
     """
     Notify the support team of the refund request.
 
@@ -300,7 +299,7 @@ def _send_refund_notification(course_product, refund_ids):
         raise NotImplementedError("Unable to send refund processing emails to support teams.")
 
     # Build the information for the ZenDesk ticket
-    student = course_product.user
+    student = user
     subject = _("[Refund] User-Requested Refund")
     body = _generate_refund_notification_body(student, refund_ids)
     requester_name = student.profile.name or student.username
