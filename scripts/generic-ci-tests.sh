@@ -132,7 +132,7 @@ case "$TEST_SUITE" in
     "lms-unit")
         case "$SHARD" in
             "all"|[1-4]|"noshard")
-                $TOX scripts/unit-tests.sh
+                $TOX bash scripts/unit-tests.sh
                 ;;
             *)
                 # If no shard is specified, rather than running all tests, create an empty xunit file. This is a
@@ -146,7 +146,7 @@ case "$TEST_SUITE" in
         ;;
 
     "cms-unit"|"commonlib-unit")
-        $TOX scripts/unit-tests.sh
+        $TOX bash scripts/unit-tests.sh
         ;;
 
     "js-unit")
