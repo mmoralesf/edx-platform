@@ -284,6 +284,32 @@ def generate_srt_from_sjson(sjson_subs, speed):
     return output
 
 
+def generate_sjson_from_srt(srt_subs):
+    """
+    Generate transcripts from sjson to SubRip (*.srt).
+
+    Arguments:
+        srt_subs(SubRip): "SRT" subs object
+
+    Returns:
+        Subs converted to "SJSON" format.
+    """
+    sub_starts = []
+    sub_ends = []
+    sub_texts = []
+    for sub in srt_subs:
+        sub_starts.append(sub.start.ordinal)
+        sub_ends.append(sub.end.ordinal)
+        sub_texts.append(sub.text.replace('\n', ' '))
+
+    sjson_subs = {
+        'start': sub_starts,
+        'end': sub_ends,
+        'text': sub_texts
+    }
+    return sjson_subs
+
+
 def copy_or_rename_transcript(new_name, old_name, item, delete_old=False, user=None):
     """
     Renames `old_name` transcript file in storage to `new_name`.
@@ -571,7 +597,8 @@ class Transcript(object):
                 return HTMLParser().unescape(text)
 
             elif output_format == 'sjson':
-                raise NotImplementedError
+                srt_subs = SubRipFile.from_string(content.decode('utf8'))
+                return generate_sjson_from_srt(srt_subs)
 
         if input_format == 'sjson':
 

@@ -649,6 +649,10 @@ def videos_index_html(course):
                 'transcript_download_handler',
                 unicode(course.id)
             ),
+            'transcript_upload_handler_url': reverse_course_url(
+                'transcript_upload_handler',
+                unicode(course.id)
+            ),
             'transcription_plans': get_3rd_party_transcription_plans()
         }
         context['active_transcript_preferences'] = get_transcript_preferences(unicode(course.id))
