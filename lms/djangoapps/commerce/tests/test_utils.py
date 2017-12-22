@@ -161,14 +161,14 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
             settings.ECOMMERCE_API_URL + 'refunds/1/process/',
             status=200,
             body=json.dumps({
-              "id": 9,
-              "created": "2017-12-21T18:23:49.468298Z",
-              "modified": "2017-12-21T18:24:02.741426Z",
-              "total_credit_excl_tax": "100.00",
-              "currency": "USD",
-              "status": "Complete",
-              "order": 15,
-              "user": 5
+                "id": 9,
+                "created": "2017-12-21T18:23:49.468298Z",
+                "modified": "2017-12-21T18:24:02.741426Z",
+                "total_credit_excl_tax": "100.00",
+                "currency": "USD",
+                "status": "Complete",
+                "order": 15,
+                "user": 5
             }),
             content_type='application/json'
         )
@@ -202,7 +202,7 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
 
     @httpretty.activate
     @patch('lms.djangoapps.commerce.utils._send_refund_notification', return_value=True)
-    def test_ecommerce_refund_failed_not_verified_no_notification(self, mock_send_notification):
+    def test_ecommerce_refund_not_verified_no_notification(self, mock_send_notification):
         httpretty.register_uri(
             httpretty.POST,
             settings.ECOMMERCE_API_URL + 'refunds/',
@@ -219,7 +219,7 @@ class RefundUtilMethodTests(ModuleStoreTestCase):
         )
         course_entitlement = CourseEntitlementFactory.create(mode=CourseMode.PROFESSIONAL)
         refund_success = refund_entitlement(course_entitlement)
-        assert not refund_success
+        assert refund_success
 
     @httpretty.activate
     @patch('lms.djangoapps.commerce.utils._send_refund_notification', return_value=True)
